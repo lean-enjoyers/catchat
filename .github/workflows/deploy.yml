@@ -26,7 +26,7 @@ jobs:
       run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'npx kill-port ${{ vars.SERVER_PORT }}'
       
     - name: run server
-      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'go run main.go --port=${{ vars.SERVER_PORT }} &'
+      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'cd ${{ secrets.WORK_DIR }} && go run main.go --port=${{ vars.SERVER_PORT }} &'
         
     - name: cleanup
       run: rm -rf ~/.ssh
