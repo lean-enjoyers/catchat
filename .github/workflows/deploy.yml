@@ -20,11 +20,13 @@ jobs:
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
     - name: connect and pull
-      run: |
-        ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 
-        cd ${{ secrets.WORK_DIR }} && git checkout ${{ secrets.MAIN_BRANCH }} && git pull
-        npx kill-port 8080
-        go run main.go
-        exit
+      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'cd ${{ secrets.WORK_DIR }} && git checkout ${{ secrets.MAIN_BRANCH }} && git pull'
+      
+    - name: kill port
+      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'npx kill-port 8080'
+      
+    - name: run server
+      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'go run main.go &'
+        
     - name: cleanup
       run: rm -rf ~/.ssh
