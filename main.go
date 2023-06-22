@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os/exec"
 )
 
 func isFlagPassed(name string) (found bool) {
@@ -23,7 +24,14 @@ type Conf struct {
 }
 
 func serve(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello from server")
+	cmd := exec.Command("catdream", "Hello from server!")
+	stdout, err := cmd.Output()
+
+	if err != nil {
+		return
+	}
+
+	fmt.Fprintf(w, string(stdout))
 }
 
 func getCliOptions() (options Conf) {
