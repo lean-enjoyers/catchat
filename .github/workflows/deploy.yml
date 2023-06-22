@@ -25,7 +25,7 @@ jobs:
       run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'npx kill-port ${{ vars.SERVER_PORT }}'
       
     - name: run server
-      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} -f 'source ~/.cargo/bin && cd ${{ secrets.WORK_DIR }} && go run main.go --port=${{ vars.SERVER_PORT }} &>/dev/null &'
+      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} -f 'source ~/.cargo/bin/catdream && cd ${{ secrets.WORK_DIR }} && go run main.go --port=${{ vars.SERVER_PORT }} &>/dev/null &'
         
     - name: cleanup
       run: rm -rf ~/.ssh
