@@ -10,8 +10,8 @@ jobs:
   run_pull:
     name: run pull
     runs-on: ubuntu-latest
-    
     steps:
+    - uses: actions-rust-lang/setup-rust-toolchain@v1
     - name: install ssh keys
       # check this thread to understand why its needed:
       # https://stackoverflow.com/a/70447517
