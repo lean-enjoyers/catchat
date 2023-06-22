@@ -25,6 +25,9 @@ jobs:
     - name: kill port
       run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'npx kill-port ${{ vars.SERVER_PORT }}'
       
+    - name: check catdream
+      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'catdream hello'
+      
     - name: run server
       run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} -f 'cd ${{ secrets.WORK_DIR }} && go run main.go --port=${{ vars.SERVER_PORT }} &>/dev/null &'
         
