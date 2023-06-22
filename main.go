@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os/exec"
@@ -24,7 +25,9 @@ type Conf struct {
 }
 
 func serve(w http.ResponseWriter, r *http.Request) {
-	cmd := exec.Command("catdream", "Hello from server!")
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	arg := string(reqBody)
+	cmd := exec.Command("catdream", arg)
 	stdout, err := cmd.Output()
 
 	if err != nil {
