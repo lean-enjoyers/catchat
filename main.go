@@ -12,19 +12,15 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type Client struct {
-	id    int
-	conn  websocket.Conn
-	valid bool
-}
-
-var clients []Client
+var clients Hub
 var idToTake int = 0
-
+var options Conf
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
+var t *template.Template
+var indexTemplate = template.Must(template.ParseFiles("tmpl/index.html"))
 
 func isFlagPassed(name string) (found bool) {
 	found = false
@@ -35,13 +31,6 @@ func isFlagPassed(name string) (found bool) {
 	})
 	return
 }
-
-type Conf struct {
-	port uint
-	root string
-}
-
-var options Conf
 
 func serve(w http.ResponseWriter, r *http.Request) {
 	reqBody, _ := ioutil.ReadAll(r.Body)
@@ -56,9 +45,6 @@ func serve(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, string(stdout))
 }
 
-var t *template.Template
-var indexTemplate = template.Must(template.ParseFiles("tmpl/index.html"))
-
 func serveIndex(w http.ResponseWriter, r *http.Request) {
 	err := t.Execute(w, map[string]interface{}{
 		"port": options.port,
@@ -70,16 +56,16 @@ func serveIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func reader(conn *websocket.Conn, connId int) {
-
 	clientContext := Client{
 		id:    idToTake,
 		conn:  *conn,
 		valid: false,
 	}
-	clients = append(clients, clientContext)
+	clients.addClient(clientContext)
+
 	idToTake += 1
 
-	if err := conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprint("Enter your name: "))); err != nil {
+	if err := clients.writeStringToClient(connId, "Enter your name: "); err != nil {
 		log.Println(err)
 		return
 	}
@@ -89,22 +75,23 @@ func reader(conn *websocket.Conn, connId int) {
 		log.Println(err)
 		return
 	}
+
 	nameStr := string(name)
 	prefix := []byte(nameStr + ": ")
 
 	// For user to be able to tell that they have joined
-	if err := conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprint("============="))); err != nil {
+	if err := clients.writeStringToClient(connId, "============="); err != nil {
 		log.Println(err)
 		return
 	}
 
 	// Alert all clients that you have connected
-	clients[connId].valid = true
-	for _, client := range clients {
+	clients.setValid(connId, true)
+	for _, client := range clients.clients {
 		if client.id == connId || !client.valid {
 			continue
 		}
-		if err := client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("%s connected", nameStr))); err != nil {
+		if err := client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Server: %s connected", nameStr))); err != nil {
 			client.valid = false
 		}
 	}
@@ -113,18 +100,18 @@ func reader(conn *websocket.Conn, connId int) {
 		messageType, p, err := conn.ReadMessage()
 
 		if err != nil {
-			for _, client := range clients {
+			for cidx, client := range clients.clients {
 				if client.id == connId || !client.valid {
 					continue
 				}
-				if err := client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("%s disconnected", nameStr))); err != nil {
+				if err := clients.writeStringToClient(cidx, fmt.Sprintf("%s disconnected", nameStr)); err != nil {
 					client.valid = false
 				}
 			}
 			return
 		}
 
-		for _, client := range clients {
+		for _, client := range clients.clients {
 			if !client.valid {
 				continue
 			}
@@ -135,6 +122,7 @@ func reader(conn *websocket.Conn, connId int) {
 	}
 }
 
+// Serve web sockets
 func serveWs(w http.ResponseWriter, r *http.Request) {
 	// Allow all origins
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
@@ -154,24 +142,9 @@ func setupRoutes(options *Conf) {
 	http.HandleFunc("/chat", serveWs)
 }
 
-func getCliOptions() (options Conf) {
-	flag.UintVar(&options.port, "port", 8080, "the port to run the server on")
-	flag.StringVar(&options.root, "root", "/", "the root folder")
-	flag.Parse()
-
-	if !isFlagPassed("port") {
-		log.Println("Port unspecified, defaulting to 8080")
-	}
-
-	if !isFlagPassed("root") {
-		log.Println("Root unspecified, defaulting to '/'")
-	}
-	return
-}
-
 func main() {
-	options = getCliOptions()
-	t = template.Must(template.Must(indexTemplate.Clone()).ParseFiles("tmpl/i.html"))
+	options = GetCliOptions()
+	t = template.Must(template.Must(indexTemplate.Clone()).ParseFiles("tmpl/chat.html"))
 
 	setupRoutes(&options)
 
