@@ -12,8 +12,9 @@ import (
 )
 
 type Client struct {
-	id   int
-	conn websocket.Conn
+	id    int
+	conn  websocket.Conn
+	valid bool
 }
 
 var clients []Client
@@ -53,24 +54,67 @@ func serve(w http.ResponseWriter, r *http.Request) {
 }
 
 func reader(conn *websocket.Conn, connId int) {
-	clients = append(clients, Client{idToTake, *conn})
+
+	clientContext := Client{
+		id:    idToTake,
+		conn:  *conn,
+		valid: false,
+	}
+	clients = append(clients, clientContext)
 	idToTake += 1
+
+	if err := conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprint("Enter your name: "))); err != nil {
+		log.Println(err)
+		return
+	}
+
+	_, name, err := conn.ReadMessage()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	nameStr := string(name)
+	nameStr = nameStr[:len(nameStr)-1]
+	prefix := []byte(nameStr + ": ")
+
+	// For user to be able to tell that they have joined
+	if err := conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprint("============="))); err != nil {
+		log.Println(err)
+		return
+	}
+
+	// Alert all clients that you have connected
+	clients[connId].valid = true
+	for _, client := range clients {
+		if client.id == connId || !client.valid {
+			continue
+		}
+		if err := client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("%s connected", nameStr))); err != nil {
+			client.valid = false
+		}
+	}
 
 	for {
 		messageType, p, err := conn.ReadMessage()
 
 		if err != nil {
-			log.Println(err)
+			for _, client := range clients {
+				if client.id == connId || !client.valid {
+					continue
+				}
+				if err := client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("%s disconnected", nameStr))); err != nil {
+					client.valid = false
+				}
+			}
 			return
 		}
 
 		for _, client := range clients {
-			if client.id == connId {
+			if client.id == connId || !client.valid {
 				continue
 			}
-			if err := client.conn.WriteMessage(messageType, p); err != nil {
-				log.Println(err)
-				return
+			if err := client.conn.WriteMessage(messageType, append(prefix, p...)); err != nil {
+				client.valid = false
 			}
 		}
 	}
@@ -86,7 +130,6 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("Client %d successfully connected...\n", idToTake)
-
 	reader(ws, idToTake)
 }
 
