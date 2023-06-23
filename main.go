@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"text/template"
 
 	"github.com/gorilla/websocket"
 )
@@ -40,6 +41,8 @@ type Conf struct {
 	root string
 }
 
+var options Conf
+
 func serve(w http.ResponseWriter, r *http.Request) {
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	arg := string(reqBody)
@@ -51,6 +54,19 @@ func serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintf(w, string(stdout))
+}
+
+var t *template.Template
+var indexTemplate = template.Must(template.ParseFiles("tmpl/index.html"))
+
+func serveIndex(w http.ResponseWriter, r *http.Request) {
+	err := t.Execute(w, map[string]interface{}{
+		"port": options.port,
+	})
+
+	if err != nil {
+		log.Print(err)
+	}
 }
 
 func reader(conn *websocket.Conn, connId int) {
@@ -74,7 +90,6 @@ func reader(conn *websocket.Conn, connId int) {
 		return
 	}
 	nameStr := string(name)
-	nameStr = nameStr[:len(nameStr)-1]
 	prefix := []byte(nameStr + ": ")
 
 	// For user to be able to tell that they have joined
@@ -110,7 +125,7 @@ func reader(conn *websocket.Conn, connId int) {
 		}
 
 		for _, client := range clients {
-			if client.id == connId || !client.valid {
+			if !client.valid {
 				continue
 			}
 			if err := client.conn.WriteMessage(messageType, append(prefix, p...)); err != nil {
@@ -134,6 +149,7 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 }
 
 func setupRoutes(options *Conf) {
+	http.HandleFunc("/", serveIndex)
 	http.HandleFunc("/say", serve)
 	http.HandleFunc("/chat", serveWs)
 }
@@ -154,7 +170,8 @@ func getCliOptions() (options Conf) {
 }
 
 func main() {
-	options := getCliOptions()
+	options = getCliOptions()
+	t = template.Must(template.Must(indexTemplate.Clone()).ParseFiles("tmpl/i.html"))
 
 	setupRoutes(&options)
 
