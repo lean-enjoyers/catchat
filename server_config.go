@@ -10,7 +10,8 @@ type Conf struct {
 	root string
 }
 
-func GetCliOptions() (options Conf) {
+func GetCliOptions() *Conf {
+	options := &Conf{}
 	flag.UintVar(&options.port, "port", 8080, "the port to run the server on")
 	flag.StringVar(&options.root, "root", "/", "the root folder")
 	flag.Parse()
@@ -22,5 +23,5 @@ func GetCliOptions() (options Conf) {
 	if !isFlagPassed("root") {
 		log.Println("Root unspecified, defaulting to '/'")
 	}
-	return
+	return options
 }

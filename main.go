@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -12,25 +11,12 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var clients Hub
-var idToTake int = 0
-var options Conf
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
 var t *template.Template
 var indexTemplate = template.Must(template.ParseFiles("tmpl/index.html"))
-
-func isFlagPassed(name string) (found bool) {
-	found = false
-	flag.Visit(func(f *flag.Flag) {
-		if f.Name == name {
-			found = true
-		}
-	})
-	return
-}
 
 func serve(w http.ResponseWriter, r *http.Request) {
 	reqBody, _ := ioutil.ReadAll(r.Body)
@@ -45,7 +31,7 @@ func serve(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, string(stdout))
 }
 
-func serveIndex(w http.ResponseWriter, r *http.Request) {
+func serveIndex(options *Conf, w http.ResponseWriter, r *http.Request) {
 	err := t.Execute(w, map[string]interface{}{
 		"port": options.port,
 	})
@@ -55,99 +41,47 @@ func serveIndex(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func reader(conn *websocket.Conn, connId int) {
-	clientContext := Client{
-		id:    idToTake,
-		conn:  *conn,
-		valid: false,
-	}
-	clients.addClient(clientContext)
-
-	idToTake += 1
-
-	if err := clients.writeStringToClient(connId, "Enter your name: "); err != nil {
-		log.Println(err)
-		return
-	}
-
-	_, name, err := conn.ReadMessage()
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	nameStr := string(name)
-	prefix := []byte(nameStr + ": ")
-
-	// For user to be able to tell that they have joined
-	if err := clients.writeStringToClient(connId, "============="); err != nil {
-		log.Println(err)
-		return
-	}
-
-	// Alert all clients that you have connected
-	clients.setValid(connId, true)
-	for _, client := range clients.clients {
-		if client.id == connId || !client.valid {
-			continue
-		}
-		if err := client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Server: %s connected", nameStr))); err != nil {
-			client.valid = false
-		}
-	}
-
-	for {
-		messageType, p, err := conn.ReadMessage()
-
-		if err != nil {
-			for cidx, client := range clients.clients {
-				if client.id == connId || !client.valid {
-					continue
-				}
-				if err := clients.writeStringToClient(cidx, fmt.Sprintf("%s disconnected", nameStr)); err != nil {
-					client.valid = false
-				}
-			}
-			return
-		}
-
-		for _, client := range clients.clients {
-			if !client.valid {
-				continue
-			}
-			if err := client.conn.WriteMessage(messageType, append(prefix, p...)); err != nil {
-				client.valid = false
-			}
-		}
-	}
-}
-
 // Serve web sockets
-func serveWs(w http.ResponseWriter, r *http.Request) {
+func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	// Allow all origins
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 
-	ws, err := upgrader.Upgrade(w, r, nil)
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
+		return
 	}
 
-	log.Printf("Client %d successfully connected...\n", idToTake)
-	reader(ws, idToTake)
+	client := makeClient(conn)
+
+	// Select the hub to connect to.
+	client.hub = hub
+
+	// Connect the client to the hub.
+	client.connect()
+
+	go client.sendLoop()
+	go client.receiveLoop()
 }
 
-func setupRoutes(options *Conf) {
-	http.HandleFunc("/", serveIndex)
+func setupRoutes(hub *Hub, options *Conf) {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		serveIndex(options, w, r)
+	})
 	http.HandleFunc("/say", serve)
-	http.HandleFunc("/chat", serveWs)
+	http.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
+		serveWs(hub, w, r)
+	})
 }
 
 func main() {
-	options = GetCliOptions()
+	options := GetCliOptions()
 	t = template.Must(template.Must(indexTemplate.Clone()).ParseFiles("tmpl/chat.html"))
 
-	setupRoutes(&options)
+	hub := makeHub()
+	go hub.Run()
 
+	setupRoutes(hub, options)
 	fmt.Printf("Starting server at port %d, with root '%s'\n", options.port, options.root)
 	portStr := fmt.Sprintf(":%d", options.port)
 
