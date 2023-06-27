@@ -74,9 +74,13 @@ func setupRoutes(hub *Hub, options *Conf) {
 	})
 }
 
+func setupTemplate() {
+	t = template.Must(template.Must(indexTemplate.Clone()).ParseFiles("tmpl/chat.html"))
+}
+
 func main() {
 	options := GetCliOptions()
-	t = template.Must(template.Must(indexTemplate.Clone()).ParseFiles("tmpl/chat.html"))
+	setupTemplate()
 
 	hub := makeHub()
 	go hub.Run()

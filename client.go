@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -9,11 +8,6 @@ import (
 
 const (
 	writeWait = 10 * time.Second
-)
-
-var (
-	newLineByte = []byte{'\n'}
-	spaceByte   = []byte{' '}
 )
 
 type Client struct {
@@ -33,14 +27,19 @@ func makeClient(conn *websocket.Conn) *Client {
 		send: make(chan []byte, 256),
 	}
 }
+
 func (c *Client) connect() {
 	c.hub.RegisterClient(c)
+}
+
+func (c *Client) closeWebsocketConn() {
+	c.conn.Close()
 }
 
 // Unregister self from the hub and close websocket connection.
 func (c *Client) disconnect() {
 	c.hub.UnregisterClient(c)
-	c.conn.Close()
+	c.closeWebsocketConn()
 }
 
 // client messages -> hub
@@ -52,7 +51,7 @@ func (c *Client) sendLoop() {
 		if err != nil {
 			break
 		}
-		message = bytes.TrimSpace(bytes.Replace(message, newLineByte, spaceByte, -1))
+		message = trimByte(message)
 		c.hub.broadcast <- message
 	}
 }
@@ -133,6 +132,12 @@ func (h *Hub) addClient(client *Client) {
 	h.clients[client] = true
 }
 
+// Removes the client from the hub.
+func (h *Hub) deleteClient(client *Client) {
+	delete(h.clients, client)
+	close(client.send)
+}
+
 func (h *Hub) Run() {
 	for {
 		select {
@@ -140,10 +145,7 @@ func (h *Hub) Run() {
 			h.addClient(client)
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
-				delete(h.clients, client)
-
-				// Close the client's send channel since it's no longer in use.
-				close(client.send)
+				h.deleteClient(client)
 			}
 		// Message received from some client.
 		case message := <-h.broadcast:
@@ -154,11 +156,9 @@ func (h *Hub) Run() {
 
 				// Failed sending to the client, terminate the client.
 				default:
-					delete(h.clients, client)
-					close(client.send)
+					h.deleteClient(client)
 				}
 			}
 		}
-
 	}
 }
