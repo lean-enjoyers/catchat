@@ -19,6 +19,9 @@ type Client struct {
 
 	// The hub the client belongs in.
 	hub *Hub
+
+	// Client username
+	userID string
 }
 
 func makeClient(conn *websocket.Conn) *Client {
@@ -136,6 +139,18 @@ func (h *Hub) addClient(client *Client) {
 func (h *Hub) deleteClient(client *Client) {
 	delete(h.clients, client)
 	close(client.send)
+}
+
+func (h *Hub) broadcastToClient(payload []byte, targetUserID string) {
+	for client := range h.clients {
+		if client.userID == targetUserID {
+			select {
+			case client.send <- payload:
+			default:
+				h.deleteClient(client)
+			}
+		}
+	}
 }
 
 func (h *Hub) Run() {
