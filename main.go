@@ -19,7 +19,7 @@ var upgrader = websocket.Upgrader{
 var t *template.Template
 var indexTemplate = template.Must(template.ParseFiles("tmpl/index.html"))
 var store = sessions.NewCookieStore([]byte("super_secret_key"))
-var users map[string]string
+var users map[string]string = make(map[string]string)
 
 func setupRoutes(hub *Hub, options *Conf) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -110,8 +110,11 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			session.Save(r, w)
 		} else {
 			http.Error(w, "Invalid Credentials", http.StatusUnauthorized)
+			return
 		}
 		w.Write([]byte("Login successfully!"))
+	} else {
+		http.Error(w, "User not found", http.StatusUnauthorized)
 	}
 }
 
