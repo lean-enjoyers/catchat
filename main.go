@@ -6,10 +6,13 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+
 	"text/template"
 
 	"github.com/gorilla/sessions"
 	"github.com/gorilla/websocket"
+
+	"github.com/lean-enjoyers/catchat/pkg/domain"
 )
 
 var upgrader = websocket.Upgrader{
@@ -21,7 +24,7 @@ var indexTemplate = template.Must(template.ParseFiles("tmpl/index.html"))
 var store = sessions.NewCookieStore([]byte("super_secret_key"))
 var users map[string]string = make(map[string]string)
 
-func setupRoutes(hub *Hub, options *Conf) {
+func setupRoutes(hub *domain.Hub, options *domain.Conf) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		serveIndex(options, w, r)
 	})
@@ -49,9 +52,9 @@ func serve(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, string(stdout))
 }
 
-func serveIndex(options *Conf, w http.ResponseWriter, r *http.Request) {
+func serveIndex(options *domain.Conf, w http.ResponseWriter, r *http.Request) {
 	err := t.Execute(w, map[string]interface{}{
-		"port": options.port,
+		"port": options.Port,
 	})
 
 	if err != nil {
@@ -60,7 +63,7 @@ func serveIndex(options *Conf, w http.ResponseWriter, r *http.Request) {
 }
 
 // Serve web sockets
-func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
+func serveWs(hub *domain.Hub, w http.ResponseWriter, r *http.Request) {
 	// Allow all origins
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 
@@ -70,16 +73,16 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := makeClient(conn)
+	client := domain.MakeClient(conn)
 
 	// Select the hub to connect to.
-	client.hub = hub
+	client.SelectHub(hub)
 
 	// Connect the client to the hub.
-	client.connect()
+	client.Connect()
 
-	go client.sendLoop()
-	go client.receiveLoop()
+	go client.SendLoop()
+	go client.ReceiveLoop()
 }
 
 ///////////////////////////////
@@ -119,15 +122,15 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	options := GetCliOptions()
+	options := domain.GetCliOptions()
 	setupTemplate()
 
-	hub := makeHub()
+	hub := domain.MakeHub()
 	go hub.Run()
 
 	setupRoutes(hub, options)
-	fmt.Printf("Starting server at port %d, with root '%s'\n", options.port, options.root)
-	portStr := fmt.Sprintf(":%d", options.port)
+	fmt.Printf("Starting server at port %d, with root '%s'\n", options.Port, options.Root)
+	portStr := fmt.Sprintf(":%d", options.Port)
 
 	if err := http.ListenAndServe(portStr, nil); err != nil {
 		log.Fatal(err)

@@ -1,100 +1,4 @@
-package main
-
-import (
-	"time"
-
-	"github.com/gorilla/websocket"
-)
-
-const (
-	writeWait = 10 * time.Second
-)
-
-type Client struct {
-	// Client's web socket connection.
-	conn *websocket.Conn
-
-	// Buffer for messages to be delivered to the client.
-	send chan []byte
-
-	// The hub the client belongs in.
-	hub *Hub
-
-	// Client username
-	userID string
-}
-
-func makeClient(conn *websocket.Conn) *Client {
-	return &Client{
-		conn: conn,
-		send: make(chan []byte, 256),
-	}
-}
-
-func (c *Client) connect() {
-	c.hub.RegisterClient(c)
-}
-
-func (c *Client) closeWebsocketConn() {
-	c.conn.Close()
-}
-
-// Unregister self from the hub and close websocket connection.
-func (c *Client) disconnect() {
-	c.hub.UnregisterClient(c)
-	c.closeWebsocketConn()
-}
-
-// client messages -> hub
-func (c *Client) sendLoop() {
-	defer c.disconnect()
-
-	for {
-		_, message, err := c.conn.ReadMessage()
-		if err != nil {
-			break
-		}
-		message = trimByte(message)
-		c.hub.broadcast <- message
-	}
-}
-
-// hub messages -> client
-func (c *Client) receiveLoop() {
-	defer c.disconnect()
-
-	for {
-		select {
-		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
-
-			w, err := c.conn.NextWriter(websocket.TextMessage)
-
-			if err != nil {
-				return
-			}
-
-			w.Write(message)
-
-			// Get queued messages and write.
-			n := len(c.send)
-			for i := 0; i < n; i++ {
-				w.Write(newLineByte)
-				w.Write(<-c.send)
-			}
-
-			// Flush message to the network.
-			if err := w.Close(); err != nil {
-				return
-			}
-
-		}
-	}
-}
+package domain
 
 type Hub struct {
 	// Registered Clients.
@@ -111,7 +15,7 @@ type Hub struct {
 }
 
 // Creates a new empty hub
-func makeHub() *Hub {
+func MakeHub() *Hub {
 	return &Hub{
 		clients:    make(map[*Client]bool),
 		register:   make(chan *Client),
