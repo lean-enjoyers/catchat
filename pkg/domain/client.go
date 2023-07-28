@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -51,6 +52,7 @@ func (c *Client) Disconnect() {
 }
 
 // client messages -> hub
+// Note(Appy): This is a potential place we can parse the message I guess?
 func (c *Client) SendLoop() {
 	defer c.Disconnect()
 
@@ -59,7 +61,17 @@ func (c *Client) SendLoop() {
 		if err != nil {
 			break
 		}
-		message = utils.TrimByte(message)
+		received := map[string]string{}
+
+		json.Unmarshal([]byte(message), &received)
+
+		val, ok := received["message"]
+		if ok {
+			message = utils.TrimByte([]byte(val))
+		} else {
+			// Ignored...
+			continue
+		}
 		c.hub.broadcast <- message
 	}
 }

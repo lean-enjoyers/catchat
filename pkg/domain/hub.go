@@ -1,5 +1,9 @@
 package domain
 
+import (
+	"fmt"
+)
+
 type Hub struct {
 	// Registered Clients.
 	clients map[*Client]bool
@@ -68,10 +72,11 @@ func (h *Hub) Run() {
 			}
 		// Message received from some client.
 		case message := <-h.broadcast:
+			message = []byte(fmt.Sprintf("<div hx-swap-oob='beforeend:#chat_body'><p>%s</p></div>", message))
 			for client := range h.clients {
 				select {
 				// Forward the message to all other clients.
-				case client.send <- message:
+				case client.send <- []byte(message):
 
 				// Failed sending to the client, terminate the client.
 				default:

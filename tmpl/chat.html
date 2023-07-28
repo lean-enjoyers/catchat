@@ -1,36 +1,23 @@
 {{ define "content" }}
-<input id="input" type="text">
-<button id="send">Send</button>
-<pre id="output" style="overflow-y: scroll; max-height: 200px;"></pre>
+<div hx-ext="ws" ws-connect="/chat">
+    <form autocomplete="off" id="send" ws-send>
+        <input autocomplete="false" id="input" name="message">
+    </form>
+
+    <!-- Messages will be append here -->
+    <pre id="output" style="overflow-y: scroll; max-height: 300px;">
+        <div id="chat_body"></div>
+    </pre>
+</div>
 <script>
     var input = document.getElementById("input");
-    var output = document.getElementById("output");
-    var socket = new WebSocket("ws://103.3.61.112:{{ .port }}/chat");
-    
-    socket.onopen = function () {
-        output.innerHTML += "Status: Connected\n";
-    };
-
-    socket.onmessage = function (e) {
-        output.innerHTML += e.data + "\n";
-        output.scrollTop = output.scrollHeight; // Scroll to the bottom
-    };
-
-    function send() {
-        socket.send(input.value);
+    document.body.addEventListener('htmx:wsBeforeSend', function() {
         input.value = "";
-    }
-  
-    var btn = document.getElementById("send");
-    btn.onclick = function(e) {
-        send();
-    };
-
-    input.addEventListener("keyup", ({key}) => {
-        if (key === "Enter") {
-            send();
-        }
     });
 
+    var output = document.getElementById("output")
+    document.body.addEventListener('htmx:wsAfterMessage', function() {
+        output.scrollTop = output.scrollHeight; // Scroll to the bottom
+    });
 </script>
 {{ end }}
