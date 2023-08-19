@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/lean-enjoyers/catchat/pkg/domain"
+	"github.com/lean-enjoyers/catchat/pkg/parser"
 )
 
 var upgrader = websocket.Upgrader{
@@ -122,17 +123,23 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	options := domain.GetCliOptions()
-	setupTemplate()
+	// options := domain.GetCliOptions()
+	// setupTemplate()
 
-	hub := domain.MakeHub()
-	go hub.Run()
+	// hub := domain.MakeHub()
+	// go hub.Run()
 
-	setupRoutes(hub, options)
-	fmt.Printf("Starting server at port %d, with root '%s'\n", options.Port, options.Root)
-	portStr := fmt.Sprintf(":%d", options.Port)
+	// setupRoutes(hub, options)
+	// fmt.Printf("Starting server at port %d, with root '%s'\n", options.Port, options.Root)
+	// portStr := fmt.Sprintf(":%d", options.Port)
 
-	if err := http.ListenAndServe(portStr, nil); err != nil {
-		log.Fatal(err)
-	}
+	// if err := http.ListenAndServe(portStr, nil); err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	p := parser.NewParser("say -m=world")
+	args := p.Parse()
+
+	_ = args
+
 }

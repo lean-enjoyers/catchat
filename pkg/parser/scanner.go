@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+	"log"
 )
 
 // Lexical scanner
@@ -33,19 +34,48 @@ func (s *Scanner) unread() {
 func (s *Scanner) expect(expectedRune rune) bool {
 	if ch := s.read(); ch == expectedRune {
 		return true
+	} else {
+		s.unread()
+		return false
 	}
+}
+
+func (s *Scanner) Read() (token Token, literal string) {
+	tok, lit := s.Advance()
 	s.unread()
-	return false
+	return tok, lit
+}
+
+func (s *Scanner) Expect(token Token) bool {
+	tok, _ := s.Read()
+	if tok == token {
+		return true
+	} else {
+		log.Printf("Expected %d token code, found %d\n", token, tok)
+		return false
+	}
+}
+
+func (s *Scanner) OptionalConsume(token Token) {
+	if s.Expect(token) {
+		s.Advance()
+	}
 }
 
 // Returns the token and the string literal
-func (s *Scanner) Scan() (token Token, literal string) {
+func (s *Scanner) Advance() (token Token, literal string) {
 	// Read the next rune
 	ch := s.read()
 
 	if isWhiteSpace(ch) {
-		return s.scanWhitespace()
-	} else if isString(ch) {
+		s.scanWhitespace()
+	} else {
+		s.unread()
+	}
+
+	ch = s.read()
+
+	if isString(ch) {
 		s.unread()
 		return s.scanIdentifier()
 	} else {
@@ -67,7 +97,7 @@ func (s *Scanner) Scan() (token Token, literal string) {
 	return ILLEGAL, string(ch)
 }
 
-func (s *Scanner) scanWhitespace() (token Token, literal string) {
+func (s *Scanner) scanWhitespace() {
 	// Consume all contiguous runes (as long as they are whitespace)
 	for {
 		if ch := s.read(); ch == eof {
@@ -78,8 +108,6 @@ func (s *Scanner) scanWhitespace() (token Token, literal string) {
 		}
 		// continue by default...
 	}
-
-	return WS, " "
 }
 
 func (s *Scanner) scanIdentifier() (token Token, literal string) {

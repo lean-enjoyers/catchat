@@ -12,10 +12,10 @@ func TestIdentifers(t *testing.T) {
 
 	identifiers := []string{"hello", "world"}
 	ident_c := 0
-	expected := []Token{IDENT, WS, IDENT, EOF}
+	expected := []Token{IDENT, IDENT, EOF}
 
 	for i, v := range expected {
-		tok, lit := sc.Scan()
+		tok, lit := sc.Advance()
 		switch v {
 		case IDENT:
 			if tok != IDENT || lit != identifiers[ident_c] {
@@ -44,10 +44,10 @@ func TestIdentifersWeirdSpacing(t *testing.T) {
 
 	identifiers := []string{"hello", "world"}
 	ident_c := 0
-	expected := []Token{WS, IDENT, WS, IDENT, WS, EOF}
+	expected := []Token{IDENT, IDENT, EOF}
 
 	for i, v := range expected {
-		tok, lit := sc.Scan()
+		tok, lit := sc.Advance()
 		switch v {
 		case IDENT:
 			if tok != IDENT || lit != identifiers[ident_c] {
@@ -76,21 +76,21 @@ func TestIdentifersWeirdAgain(t *testing.T) {
 
 	identifiers := []string{"a", "b", "c", "d", "e", "f", "g"}
 	ident_c := 0
-	expected := []Token{IDENT, WS, IDENT, WS, IDENT, WS, IDENT, WS, IDENT, WS, IDENT, WS, IDENT, EOL}
+	expected := []Token{IDENT, IDENT, IDENT, IDENT, IDENT, IDENT, IDENT, EOL}
 
 	for _, v := range expected {
 		switch v {
 		case IDENT:
-			if tok, lit := sc.Scan(); tok != IDENT && lit != identifiers[ident_c] {
+			if tok, lit := sc.Advance(); tok != IDENT && lit != identifiers[ident_c] {
 				t.Fatalf("'%s' not identified as IDENTIFIER", lit)
 			}
 			ident_c += 1
 		case WS:
-			if tok, lit := sc.Scan(); tok != WS {
+			if tok, lit := sc.Advance(); tok != WS {
 				t.Fatalf("'%s' not identified as WHITESPACE", lit)
 			}
-		case EOL:
-			if tok, _ := sc.Scan(); tok != EOF {
+		case EOF:
+			if tok, _ := sc.Advance(); tok != EOF {
 				t.Fatalf("Failed to identify EOF")
 			}
 		}
@@ -113,14 +113,10 @@ func TestWhitespace(t *testing.T) {
 	ident_c := 0
 	expected := []Token{
 		IDENT,
-		WS,
 		IDENT,
-		WS,
 		DASH,
 		IDENT,
-		WS,
 		IDENT,
-		WS,
 		DDASH,
 		IDENT,
 		ASSIGNMENT,
@@ -129,7 +125,7 @@ func TestWhitespace(t *testing.T) {
 	}
 
 	for i, v := range expected {
-		tok, lit := sc.Scan()
+		tok, lit := sc.Advance()
 		switch v {
 		case IDENT:
 			if tok != IDENT || lit != identifiers[ident_c] {

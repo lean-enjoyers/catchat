@@ -8,7 +8,7 @@ type Token int
 
 // Tokens
 const (
-	ILLEGAL = iota
+	ILLEGAL Token = iota
 	EOF
 	EOL
 	WS
