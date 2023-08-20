@@ -13,6 +13,7 @@ const (
 	EOL
 	WS
 	IDENT      // Command name, parameter
+	STR        // String encased in quotes
 	DASH       // Indication of a short command
 	DDASH      // Indication of a long command
 	ASSIGNMENT // =

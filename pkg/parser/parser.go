@@ -3,8 +3,6 @@ package parser
 // This is handwritten to only support posix style command line arguments.
 
 import (
-	"fmt"
-	"log"
 	"strings"
 
 	"github.com/lean-enjoyers/catchat/pkg/commands"
@@ -20,51 +18,70 @@ func NewParser(input string) *Parser {
 }
 
 func (p *Parser) Parse() commands.CommandArgument {
-	var args commands.CommandArgument
+	args := commands.NewCommandArgument()
 
 	// Retrieve the command name.
 	if p.scanner.Expect(IDENT) {
-		_, cmd := p.scanner.Advance()
-		args.SetCommand(cmd)
-		fmt.Printf("Command set: %s\n", cmd)
+		token := p.scanner.Advance()
+		args.SetCommand(token.string)
 	} else {
-		log.Println("Invalid command name, not specified.")
-		return args
+		return *args
 	}
 
 	// Parse arguments.
 	for {
-		token, _ := p.scanner.Advance()
-		fmt.Printf("Token: %d\n", token)
+		token := p.scanner.Advance()
 
-		if token == EOF {
-			return args
+		if token.Token == EOF {
+			return *args
 		}
 
-		switch token {
+		switch token.Token {
 		case DASH:
-
-			log.Println("Parsing short flag.")
 
 			// Retrieve the flag name.
 			var flagname string
 			if p.scanner.Expect(IDENT) {
-				_, flagname = p.scanner.Advance()
+				flagname = p.scanner.Advance().string
 			} else {
-				log.Println("Error: expected flag.")
-				return args
+				return *args
 			}
 
 			// Incase of =
 			p.scanner.OptionalConsume(ASSIGNMENT)
 
-			// Retrieve the flag value
-			if p.scanner.Expect(IDENT) {
-				// Flag value
-				_, valuename := p.scanner.Advance()
+			valuename := ""
 
-				args.SetShortOption(flagname, valuename)
+			// Retrieve the flag value
+			if p.scanner.Expect(IDENT) || p.scanner.Expect(STR) {
+				// Flag value
+				valuename = p.scanner.Advance().string
+
 			}
+			args.SetShortOption(flagname, valuename)
+
+		case DDASH:
+
+			// Retrieve the flag name.
+			var flagname string
+			if p.scanner.Expect(IDENT) {
+				flagname = p.scanner.Advance().string
+			} else {
+				return *args
+			}
+
+			// Incase of =
+			p.scanner.OptionalConsume(ASSIGNMENT)
+
+			valuename := ""
+
+			// Retrieve the flag value
+			if p.scanner.Expect(IDENT) || p.scanner.Expect(STR) {
+				// Flag value
+				valuename = p.scanner.Advance().string
+			}
+
+			args.SetLongOption(flagname, valuename)
 		}
 	}
 }

@@ -15,7 +15,9 @@ func TestIdentifers(t *testing.T) {
 	expected := []Token{IDENT, IDENT, EOF}
 
 	for i, v := range expected {
-		tok, lit := sc.Advance()
+		token := sc.Advance()
+		tok := token.Token
+		lit := token.string
 		switch v {
 		case IDENT:
 			if tok != IDENT || lit != identifiers[ident_c] {
@@ -47,7 +49,9 @@ func TestIdentifersWeirdSpacing(t *testing.T) {
 	expected := []Token{IDENT, IDENT, EOF}
 
 	for i, v := range expected {
-		tok, lit := sc.Advance()
+		token := sc.Advance()
+		tok := token.Token
+		lit := token.string
 		switch v {
 		case IDENT:
 			if tok != IDENT || lit != identifiers[ident_c] {
@@ -78,20 +82,26 @@ func TestIdentifersWeirdAgain(t *testing.T) {
 	ident_c := 0
 	expected := []Token{IDENT, IDENT, IDENT, IDENT, IDENT, IDENT, IDENT, EOL}
 
-	for _, v := range expected {
+	for i, v := range expected {
+		token := sc.Advance()
+		tok := token.Token
+		lit := token.string
 		switch v {
 		case IDENT:
-			if tok, lit := sc.Advance(); tok != IDENT && lit != identifiers[ident_c] {
+			if tok != IDENT || lit != identifiers[ident_c] {
 				t.Fatalf("'%s' not identified as IDENTIFIER", lit)
 			}
 			ident_c += 1
 		case WS:
-			if tok, lit := sc.Advance(); tok != WS {
+			if tok != WS {
 				t.Fatalf("'%s' not identified as WHITESPACE", lit)
 			}
 		case EOF:
-			if tok, _ := sc.Advance(); tok != EOF {
+			if tok != EOF {
 				t.Fatalf("Failed to identify EOF")
+			}
+			if i != len(expected)-1 {
+				t.Fatalf("Failed to read all")
 			}
 		}
 	}
@@ -120,12 +130,14 @@ func TestWhitespace(t *testing.T) {
 		DDASH,
 		IDENT,
 		ASSIGNMENT,
-		IDENT,
+		STR,
 		EOF,
 	}
 
 	for i, v := range expected {
-		tok, lit := sc.Advance()
+		token := sc.Advance()
+		tok := token.Token
+		lit := token.string
 		switch v {
 		case IDENT:
 			if tok != IDENT || lit != identifiers[ident_c] {
@@ -142,10 +154,6 @@ func TestWhitespace(t *testing.T) {
 			}
 			if i != len(expected)-1 {
 				t.Fatalf("Failed to read all")
-			}
-		case ASSIGNMENT:
-			if tok != ASSIGNMENT && lit != "=" {
-				t.Fatalf("'%s' not identified as ASSIGNMENT", lit)
 			}
 		}
 	}

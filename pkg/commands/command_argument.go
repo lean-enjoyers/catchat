@@ -6,6 +6,14 @@ type CommandArgument struct {
 	sargs map[string]string
 }
 
+func NewCommandArgument() *CommandArgument {
+	return &CommandArgument{
+		cmd:   "",
+		largs: make(map[string]string),
+		sargs: make(map[string]string),
+	}
+}
+
 func (c *CommandArgument) SetCommand(name string) {
 	c.cmd = name
 }
