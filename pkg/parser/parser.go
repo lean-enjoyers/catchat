@@ -3,6 +3,7 @@ package parser
 // This is handwritten to only support posix style command line arguments.
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
@@ -25,6 +26,7 @@ func (p *Parser) Parse() commands.CommandArgument {
 	if p.scanner.Expect(IDENT) {
 		_, cmd := p.scanner.Advance()
 		args.SetCommand(cmd)
+		fmt.Printf("Command set: %s\n", cmd)
 	} else {
 		log.Println("Invalid command name, not specified.")
 		return args
@@ -33,13 +35,16 @@ func (p *Parser) Parse() commands.CommandArgument {
 	// Parse arguments.
 	for {
 		token, _ := p.scanner.Advance()
+		fmt.Printf("Token: %d\n", token)
 
-		if token == EOL {
+		if token == EOF {
 			return args
 		}
 
 		switch token {
 		case DASH:
+
+			log.Println("Parsing short flag.")
 
 			// Retrieve the flag name.
 			var flagname string

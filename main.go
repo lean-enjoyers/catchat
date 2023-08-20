@@ -137,9 +137,17 @@ func main() {
 	// 	log.Fatal(err)
 	// }
 
-	p := parser.NewParser("say -m=world")
-	args := p.Parse()
+	parser := parser.NewParser("say -m=world")
+	args := parser.Parse()
 
-	_ = args
+	value, ok := args.GetFlag("m")
+
+	if !ok {
+		fmt.Println("Flag not set properly!")
+	}
+
+	if value != "world" {
+		fmt.Println("Flag value set incorretly.")
+	}
 
 }

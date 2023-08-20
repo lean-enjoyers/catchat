@@ -3,22 +3,27 @@ package parser
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 )
 
 // Lexical scanner
 type Scanner struct {
-	r *bufio.Reader
+	r              *bufio.Reader
+	offset         uint32
+	lastWordLength uint32
 }
 
 func NewScanner(r io.Reader) *Scanner {
-	return &Scanner{r: bufio.NewReader(r)}
+	return &Scanner{r: bufio.NewReader(r), offset: 0, lastWordLength: 0}
 }
 
 // Returns the next character
 func (s *Scanner) read() rune {
 	ch, _, err := s.r.ReadRune()
+	s.offset += 1
+
 	if err != nil {
 		return eof
 	}
@@ -28,6 +33,16 @@ func (s *Scanner) read() rune {
 // Place the previously read rune back on the reader
 func (s *Scanner) unread() {
 	_ = s.r.UnreadRune()
+	s.offset -= 1
+}
+
+func (s *Scanner) unreadMany(count uint32) {
+	fmt.Printf("count: %d\n", count)
+	for count != 0 {
+		fmt.Println("UNREAD")
+		s.unread()
+		count -= 1
+	}
 }
 
 // Consumes the current rune if it matches what is expected
@@ -41,13 +56,21 @@ func (s *Scanner) expect(expectedRune rune) bool {
 }
 
 func (s *Scanner) Read() (token Token, literal string) {
+	oldOffset := s.offset
 	tok, lit := s.Advance()
-	s.unread()
+	s.unreadMany(s.offset - oldOffset)
+
 	return tok, lit
 }
 
 func (s *Scanner) Expect(token Token) bool {
-	tok, _ := s.Read()
+	tok, l := s.Read()
+
+	fmt.Printf("Token: %s\n", l)
+
+	tok, l = s.Read()
+	fmt.Printf("Token: %s\n", l)
+
 	if tok == token {
 		return true
 	} else {
