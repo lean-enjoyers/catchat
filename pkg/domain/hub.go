@@ -2,6 +2,8 @@ package domain
 
 import (
 	"fmt"
+
+	"github.com/lean-enjoyers/catchat/pkg/parser"
 )
 
 type Hub struct {
@@ -61,6 +63,43 @@ func (h *Hub) broadcastToClient(payload []byte, targetUserID string) {
 	}
 }
 
+func (h *Hub) broadcastMessage(message string) {
+	payload := []byte(fmt.Sprintf("<div hx-swap-oob='beforeend:#chat_body'><p>%s</p></div>", message))
+	for client := range h.clients {
+		select {
+		// Forward the message to all other clients.
+		case client.send <- payload:
+
+		// Failed sending to the client, terminate the client.
+		default:
+			h.deleteClient(client)
+		}
+	}
+}
+
+func (h *Hub) handleCommand(command string) {
+	program := parser.NewParser(command).Parse()
+
+	if program.GetCommand() == "say" {
+		msg, ok := program.GetFlag("message")
+
+		if ok {
+			h.broadcastMessage(msg)
+		}
+
+		msg1, ok1 := program.GetFlag("m")
+
+		if ok1 {
+			h.broadcastMessage(msg1)
+		}
+
+		// Neither specified
+		if !(ok || ok1) {
+			h.broadcastMessage("Say Error: No message.")
+		}
+	}
+}
+
 func (h *Hub) Run() {
 	for {
 		select {
@@ -70,19 +109,17 @@ func (h *Hub) Run() {
 			if _, ok := h.clients[client]; ok {
 				h.deleteClient(client)
 			}
-		// Message received from some client.
+		// Message received from client.
 		case message := <-h.broadcast:
-			message = []byte(fmt.Sprintf("<div hx-swap-oob='beforeend:#chat_body'><p>%s</p></div>", message))
-			for client := range h.clients {
-				select {
-				// Forward the message to all other clients.
-				case client.send <- []byte(message):
-
-				// Failed sending to the client, terminate the client.
-				default:
-					h.deleteClient(client)
-				}
-			}
+			h.handleMessage(string(message))
 		}
+	}
+}
+
+func (h *Hub) handleMessage(message string) {
+	if len(message) > 0 && message[0] == '/' {
+		h.handleCommand(message[1:])
+	} else {
+		h.broadcastMessage(message)
 	}
 }

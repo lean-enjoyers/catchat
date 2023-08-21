@@ -40,3 +40,7 @@ func (c *CommandArgument) GetFlag(key string) (string, bool) {
 
 	return "", false
 }
+
+func (c *CommandArgument) GetCommand() string {
+	return c.cmd
+}
