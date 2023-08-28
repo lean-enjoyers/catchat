@@ -33,6 +33,7 @@ func setupRoutes(hub *domain.Hub, options *domain.Conf) {
 		serveWs(hub, w, r)
 	})
 	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/sign-up", registerHandler)
 }
 
 func setupTemplate() {
@@ -118,6 +119,50 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Login successfully!"))
 	} else {
 		http.Error(w, "User not found", http.StatusUnauthorized)
+	}
+}
+
+func registerHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method Not Supported", http.StatusMethodNotAllowed)
+		return
+	}
+
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Please pass the data as URL form encoded", http.StatusBadRequest)
+		return
+	}
+
+	// Retrieve username and password from the form
+	username := r.Form.Get("username")
+	password := r.Form.Get("password")
+	confirmedPassword := r.Form.Get("confirmed_password")
+	_, exists := users[username]
+	if exists {
+		// Returns a new session if there is no current session.
+		http.Error(w, "User already exists", http.StatusUnauthorized)
+	} else {
+		session, _ := store.Get(r, "session.id")
+		if len(username) > 0 && len(password) > 0 && len(confirmedPassword) > 0 {
+			println(username)
+			println(password)
+			println(confirmedPassword)
+			if confirmedPassword == password {
+				users[username] = password
+				session.Values["authenticated"] = true
+				session.Save(r, w)
+			} else {
+				http.Error(w, "Passwords don't match", http.StatusUnauthorized)
+				return
+			}
+			w.Write([]byte("User has been registered successfully!"))
+		} else {
+
+			http.Error(w, "Please fill in required information", http.StatusUnauthorized)
+			return
+		}
+
 	}
 }
 
