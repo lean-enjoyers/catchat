@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/gorilla/websocket"
 
+	_ "github.com/lean-enjoyers/catchat/pkg/command/commands"
 	"github.com/lean-enjoyers/catchat/pkg/domain"
 )
 
