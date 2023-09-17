@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os/exec"
 
-	"text/template"
+	"html/template"
 
 	"github.com/gorilla/sessions"
 	"github.com/gorilla/websocket"
@@ -19,10 +19,13 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
-var t *template.Template
-var indexTemplate = template.Must(template.ParseFiles("tmpl/index.html"))
-var store = sessions.NewCookieStore([]byte("super_secret_key"))
-var users map[string]string = make(map[string]string)
+
+func getTemplates() *template.Template {
+	t := template.Must(template.ParseGlob("tmpl/*.html"))
+	template.Must(t.ParseGlob("tmpl/base/*.html"))
+
+	return t
+}
 
 func setupRoutes(hub *domain.Hub, options *domain.Conf) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -33,10 +36,6 @@ func setupRoutes(hub *domain.Hub, options *domain.Conf) {
 		serveWs(hub, w, r)
 	})
 	http.HandleFunc("/login", loginHandler)
-}
-
-func setupTemplate() {
-	t = template.Must(template.Must(indexTemplate.Clone()).ParseFiles("tmpl/chat.html"))
 }
 
 func serve(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +52,7 @@ func serve(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveIndex(options *domain.Conf, w http.ResponseWriter, r *http.Request) {
-	err := t.Execute(w, map[string]interface{}{
+	err := templates.ExecuteTemplate(w, "baseHTML", map[string]interface{}{
 		"port": options.Port,
 	})
 
@@ -121,9 +120,20 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var (
+	templates *template.Template
+	users     map[string]string
+	store     *sessions.CookieStore
+)
+
+func init() {
+	templates = getTemplates()
+	users = make(map[string]string)
+	store = sessions.NewCookieStore([]byte("super_secret_key"))
+}
+
 func main() {
 	options := domain.GetCliOptions()
-	setupTemplate()
 
 	hub := domain.MakeHub()
 	go hub.Run()
