@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os/exec"
 
-	"text/template"
+	"html/template"
 
 	"github.com/gorilla/sessions"
 	"github.com/gorilla/websocket"
@@ -16,14 +16,12 @@ import (
 	"github.com/lean-enjoyers/catchat/pkg/domain"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+func getTemplates() *template.Template {
+	t := template.Must(template.ParseGlob("tmpl/*.html"))
+	template.Must(t.ParseGlob("tmpl/base/*.html"))
+
+	return t
 }
-var t *template.Template
-var indexTemplate = template.Must(template.ParseFiles("tmpl/index.html"))
-var store = sessions.NewCookieStore([]byte("super_secret_key"))
-var users map[string]string = make(map[string]string)
 
 func setupRoutes(hub *domain.Hub, options *domain.Conf) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -35,10 +33,6 @@ func setupRoutes(hub *domain.Hub, options *domain.Conf) {
 	})
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/sign-up", registerHandler)
-}
-
-func setupTemplate() {
-	t = template.Must(template.Must(indexTemplate.Clone()).ParseFiles("tmpl/chat.html"))
 }
 
 func serve(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +49,7 @@ func serve(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveIndex(options *domain.Conf, w http.ResponseWriter, r *http.Request) {
-	err := t.Execute(w, map[string]interface{}{
+	err := templates.ExecuteTemplate(w, "baseHTML", map[string]interface{}{
 		"port": options.Port,
 	})
 
@@ -125,6 +119,20 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var (
+	templates *template.Template
+	users     map[string]string
+	store     *sessions.CookieStore
+	upgrader  websocket.Upgrader
+)
+
+func init() {
+	templates = getTemplates()
+	users = make(map[string]string)
+	store = sessions.NewCookieStore([]byte("super_secret_key"))
+	upgrader = websocket.Upgrader{ReadBufferSize: 1024, WriteBufferSize: 1024}
+}
+
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method Not Supported", http.StatusMethodNotAllowed)
@@ -160,13 +168,11 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			http.Error(w, "Please fill in required information", http.StatusUnauthorized)
 		}
-
 	}
 }
 
 func main() {
 	options := domain.GetCliOptions()
-	setupTemplate()
 
 	hub := domain.MakeHub()
 	go hub.Run()
