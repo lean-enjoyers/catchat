@@ -108,8 +108,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	pswd, exists := users[username]
 
-	println(username)
-	println(password)
 	if exists {
 		// Returns a new session if there is no current session.
 		session, _ := store.Get(r, "session.id")
@@ -150,9 +148,6 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		session, _ := store.Get(r, "session.id")
 		if len(username) > 0 && len(password) > 0 && len(confirmedPassword) > 0 {
-			println(username)
-			println(password)
-			println(confirmedPassword)
 			if confirmedPassword == password {
 				users[username] = password
 				session.Values["authenticated"] = true
