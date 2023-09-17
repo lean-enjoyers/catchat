@@ -16,8 +16,8 @@ func TestIdentifers(t *testing.T) {
 
 	for i, v := range expected {
 		token := sc.Advance()
-		tok := token.Token
-		lit := token.string
+		tok := token.Tok
+		lit := token.Val
 		switch v {
 		case IDENT:
 			if tok != IDENT || lit != identifiers[ident_c] {
@@ -50,8 +50,8 @@ func TestIdentifersWeirdSpacing(t *testing.T) {
 
 	for i, v := range expected {
 		token := sc.Advance()
-		tok := token.Token
-		lit := token.string
+		tok := token.Tok
+		lit := token.Val
 		switch v {
 		case IDENT:
 			if tok != IDENT || lit != identifiers[ident_c] {
@@ -84,8 +84,8 @@ func TestIdentifersWeirdAgain(t *testing.T) {
 
 	for i, v := range expected {
 		token := sc.Advance()
-		tok := token.Token
-		lit := token.string
+		tok := token.Tok
+		lit := token.Val
 		switch v {
 		case IDENT:
 			if tok != IDENT || lit != identifiers[ident_c] {
@@ -136,8 +136,8 @@ func TestWhitespace(t *testing.T) {
 
 	for i, v := range expected {
 		token := sc.Advance()
-		tok := token.Token
-		lit := token.string
+		tok := token.Tok
+		lit := token.Val
 		switch v {
 		case IDENT:
 			if tok != IDENT || lit != identifiers[ident_c] {

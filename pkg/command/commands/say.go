@@ -1,12 +1,13 @@
 package commands
 
 import (
+	command_args "github.com/lean-enjoyers/catchat/pkg/command/args"
 	command "github.com/lean-enjoyers/catchat/pkg/command/base"
 )
 
 type SayCommand struct{}
 
-func (s *SayCommand) Execute(args command.CommandArgument, hub command.IHub) {
+func (s *SayCommand) Execute(args command_args.CommandArgument, hub command.IHub) {
 	arguments := args.GetArguments()
 
 	ok := len(arguments) > 0

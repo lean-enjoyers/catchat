@@ -1,4 +1,4 @@
-package command
+package command_args
 
 type CommandArgument struct {
 	cmd   string
