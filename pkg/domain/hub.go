@@ -3,7 +3,7 @@ package domain
 import (
 	"fmt"
 
-	"github.com/lean-enjoyers/catchat/pkg/parser"
+	command "github.com/lean-enjoyers/catchat/pkg/command/base"
 )
 
 type Hub struct {
@@ -41,29 +41,29 @@ func (h *Hub) UnregisterClient(client *Client) {
 }
 
 // Adds a client to the hub.
-func (h *Hub) addClient(client *Client) {
+func (h *Hub) AddClient(client *Client) {
 	h.clients[client] = true
 }
 
 // Removes the client from the hub.
-func (h *Hub) deleteClient(client *Client) {
+func (h *Hub) DeleteClient(client *Client) {
 	delete(h.clients, client)
 	close(client.send)
 }
 
-func (h *Hub) broadcastToClient(payload []byte, targetUserID string) {
+func (h *Hub) BroadcastToClient(payload []byte, targetUserID string) {
 	for client := range h.clients {
 		if client.userID == targetUserID {
 			select {
 			case client.send <- payload:
 			default:
-				h.deleteClient(client)
+				h.DeleteClient(client)
 			}
 		}
 	}
 }
 
-func (h *Hub) broadcastMessage(message string) {
+func (h *Hub) BroadcastMessage(message string) {
 	payload := []byte(fmt.Sprintf("<div hx-swap-oob='beforeend:#chat_body'><p>%s</p></div>", message))
 	for client := range h.clients {
 		select {
@@ -72,54 +72,46 @@ func (h *Hub) broadcastMessage(message string) {
 
 		// Failed sending to the client, terminate the client.
 		default:
-			h.deleteClient(client)
+			h.DeleteClient(client)
 		}
 	}
 }
 
-func (h *Hub) handleCommand(command string) {
-	program := parser.NewParser(command).Parse()
+func (h *Hub) HandleCommand(cmd string) {
+	args := command.GetArgs(cmd)
+	commandName := args.GetCommand()
 
-	if program.GetCommand() == "say" {
-		msg, ok := program.GetFlag("message")
-
-		if ok {
-			h.broadcastMessage(msg)
-		}
-
-		msg1, ok1 := program.GetFlag("m")
-
-		if ok1 {
-			h.broadcastMessage(msg1)
-		}
-
-		// Neither specified
-		if !(ok || ok1) {
-			h.broadcastMessage("Say Error: No message.")
+	if len(commandName) > 0 {
+		p := command.Commands.Get(commandName)
+		if p != nil {
+			p.Execute(args, h)
+		} else {
+			h.BroadcastMessage("Error: command not found")
 		}
 	}
+
 }
 
 func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.register:
-			h.addClient(client)
+			h.AddClient(client)
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
-				h.deleteClient(client)
+				h.DeleteClient(client)
 			}
 		// Message received from client.
 		case message := <-h.broadcast:
-			h.handleMessage(string(message))
+			h.HandleMessage(string(message))
 		}
 	}
 }
 
-func (h *Hub) handleMessage(message string) {
+func (h *Hub) HandleMessage(message string) {
 	if len(message) > 0 && message[0] == '/' {
-		h.handleCommand(message[1:])
+		h.HandleCommand(message[1:])
 	} else {
-		h.broadcastMessage(message)
+		h.BroadcastMessage(message)
 	}
 }

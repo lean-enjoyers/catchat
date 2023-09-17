@@ -5,57 +5,58 @@ package parser
 import (
 	"strings"
 
-	"github.com/lean-enjoyers/catchat/pkg/commands"
+	"github.com/lean-enjoyers/catchat/pkg/command/args"
 )
 
 type Parser struct {
-	scanner Scanner
+	Scanner Scanner
 }
 
 func NewParser(input string) *Parser {
 	r := strings.NewReader(input)
-	return &Parser{scanner: *NewScanner(r)}
+	return &Parser{Scanner: *NewScanner(r)}
 }
 
-func (p *Parser) Parse() commands.CommandArgument {
-	args := commands.NewCommandArgument()
+func (p *Parser) Parse() command_args.CommandArgument {
+	args := command_args.NewCommandArgument()
 
 	// Retrieve the command name.
-	if p.scanner.Expect(IDENT) {
-		token := p.scanner.Advance()
-		args.SetCommand(token.string)
+	if p.Scanner.Expect(IDENT) {
+		token := p.Scanner.Advance()
+		args.SetCommand(token.Val)
 	} else {
 		return *args
 	}
 
 	// Parse arguments.
 	for {
-		token := p.scanner.Advance()
+		token := p.Scanner.Advance()
 
-		if token.Token == EOF {
+		if token.Tok == EOF {
 			return *args
 		}
 
-		switch token.Token {
+		switch token.Tok {
+
 		case DASH:
 
 			// Retrieve the flag name.
 			var flagname string
-			if p.scanner.Expect(IDENT) {
-				flagname = p.scanner.Advance().string
+			if p.Scanner.Expect(IDENT) {
+				flagname = p.Scanner.Advance().Val
 			} else {
 				return *args
 			}
 
 			// Incase of =
-			p.scanner.OptionalConsume(ASSIGNMENT)
+			p.Scanner.OptionalConsume(ASSIGNMENT)
 
 			valuename := ""
 
 			// Retrieve the flag value
-			if p.scanner.Expect(IDENT) || p.scanner.Expect(STR) {
+			if p.Scanner.Expect(IDENT) || p.Scanner.Expect(STR) {
 				// Flag value
-				valuename = p.scanner.Advance().string
+				valuename = p.Scanner.Advance().Val
 
 			}
 			args.SetShortOption(flagname, valuename)
@@ -64,24 +65,30 @@ func (p *Parser) Parse() commands.CommandArgument {
 
 			// Retrieve the flag name.
 			var flagname string
-			if p.scanner.Expect(IDENT) {
-				flagname = p.scanner.Advance().string
+			if p.Scanner.Expect(IDENT) {
+				flagname = p.Scanner.Advance().Val
 			} else {
 				return *args
 			}
 
 			// Incase of =
-			p.scanner.OptionalConsume(ASSIGNMENT)
+			p.Scanner.OptionalConsume(ASSIGNMENT)
 
 			valuename := ""
 
 			// Retrieve the flag value
-			if p.scanner.Expect(IDENT) || p.scanner.Expect(STR) {
+			if p.Scanner.Expect(IDENT) || p.Scanner.Expect(STR) {
 				// Flag value
-				valuename = p.scanner.Advance().string
+				valuename = p.Scanner.Advance().Val
 			}
 
 			args.SetLongOption(flagname, valuename)
+
+		case IDENT:
+			args.AddArgument(token.Val)
+
+		case STR:
+			args.AddArgument(token.Val)
 		}
 	}
 }

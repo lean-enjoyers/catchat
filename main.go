@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/gorilla/websocket"
 
+	_ "github.com/lean-enjoyers/catchat/pkg/command/commands"
 	"github.com/lean-enjoyers/catchat/pkg/domain"
 )
 
@@ -31,6 +32,7 @@ func setupRoutes(hub *domain.Hub, options *domain.Conf) {
 		serveWs(hub, w, r)
 	})
 	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/sign-up", registerHandler)
 }
 
 func serve(w http.ResponseWriter, r *http.Request) {
@@ -99,10 +101,12 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	password := r.Form.Get("password")
 
 	pswd, exists := users[username]
+
 	if exists {
 		// Returns a new session if there is no current session.
 		session, _ := store.Get(r, "session.id")
 		if pswd == password {
+
 			session.Values["authenticated"] = true
 			session.Save(r, w)
 		} else {
@@ -127,6 +131,44 @@ func init() {
 	users = make(map[string]string)
 	store = sessions.NewCookieStore([]byte("super_secret_key"))
 	upgrader = websocket.Upgrader{ReadBufferSize: 1024, WriteBufferSize: 1024}
+}
+
+func registerHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Supported", http.StatusMethodNotAllowed)
+		return
+	}
+
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Please pass the data as URL form encoded", http.StatusBadRequest)
+		return
+	}
+
+	// Retrieve username and password from the form
+	username := r.Form.Get("username")
+	password := r.Form.Get("password")
+	confirmedPassword := r.Form.Get("confirmed_password")
+	_, exists := users[username]
+	if exists {
+		// Returns a new session if there is no current session.
+		http.Error(w, "User already exists", http.StatusUnauthorized)
+	} else {
+		session, _ := store.Get(r, "session.id")
+		if len(username) > 0 && len(password) > 0 && len(confirmedPassword) > 0 {
+			if confirmedPassword == password {
+				users[username] = password
+				session.Values["authenticated"] = true
+				session.Save(r, w)
+			} else {
+				http.Error(w, "Passwords don't match", http.StatusUnauthorized)
+				return
+			}
+			w.Write([]byte("User has been registered successfully!"))
+		} else {
+			http.Error(w, "Please fill in required information", http.StatusUnauthorized)
+		}
+	}
 }
 
 func main() {
