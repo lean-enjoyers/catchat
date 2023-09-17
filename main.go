@@ -15,11 +15,6 @@ import (
 	"github.com/lean-enjoyers/catchat/pkg/domain"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-}
-
 func getTemplates() *template.Template {
 	t := template.Must(template.ParseGlob("tmpl/*.html"))
 	template.Must(t.ParseGlob("tmpl/base/*.html"))
@@ -124,12 +119,14 @@ var (
 	templates *template.Template
 	users     map[string]string
 	store     *sessions.CookieStore
+	upgrader  websocket.Upgrader
 )
 
 func init() {
 	templates = getTemplates()
 	users = make(map[string]string)
 	store = sessions.NewCookieStore([]byte("super_secret_key"))
+	upgrader = websocket.Upgrader{ReadBufferSize: 1024, WriteBufferSize: 1024}
 }
 
 func main() {
