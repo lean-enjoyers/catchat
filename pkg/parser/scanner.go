@@ -7,8 +7,8 @@ import (
 )
 
 type TokenStruct struct {
-	Token
-	string
+	Tok Token
+	Val string
 }
 
 // Lexical scanner
@@ -68,7 +68,7 @@ func (s *Scanner) Peek(offset uint32) TokenStruct {
 }
 
 func (s *Scanner) Expect(token Token) bool {
-	return s.Read().Token == token
+	return s.Read().Tok == token
 }
 
 func (s *Scanner) OptionalConsume(token Token) {
