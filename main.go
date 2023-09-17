@@ -106,10 +106,14 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	password := r.Form.Get("password")
 
 	pswd, exists := users[username]
+
+	println(username)
+	println(password)
 	if exists {
 		// Returns a new session if there is no current session.
 		session, _ := store.Get(r, "session.id")
 		if pswd == password {
+
 			session.Values["authenticated"] = true
 			session.Save(r, w)
 		} else {
@@ -123,7 +127,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	if r.Method != "POST" {
 		http.Error(w, "Method Not Supported", http.StatusMethodNotAllowed)
 		return
 	}
@@ -158,9 +162,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			w.Write([]byte("User has been registered successfully!"))
 		} else {
-
 			http.Error(w, "Please fill in required information", http.StatusUnauthorized)
-			return
 		}
 
 	}
